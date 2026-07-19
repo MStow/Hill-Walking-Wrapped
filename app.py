@@ -50,6 +50,19 @@ ROUTE_TYPE_PIE_COLUMNS = [
     "Nav Course", "Green", "Yellow", "Red", "Technical Winter", "Expedition", "Fell Run",
 ]
 
+# Colors for the route-type pie chart, matching each grade's real-world color.
+# Route types without an obvious color get a distinct fallback color.
+ROUTE_TYPE_COLORS = {
+    "Green": "#2ca02c",
+    "Yellow": "#f2c318",
+    "Red": "#d62728",
+    "D. Red": "#8b0000",
+    "Nav Course": "#1f77b4",
+    "Technical Winter": "#7fdbff",
+    "Expedition": "#9467bd",
+    "Fell Run": "#ff7f0e",
+}
+
 CACHE_TTL_SECONDS = 300  # re-pull from Google Sheets every 5 minutes
 
 # ---------------------------------------------------------------------------
@@ -128,8 +141,11 @@ def find_leaderboard_positions(raw_grid: list, name: str) -> list:
     return results
 
 
-def make_pie_chart(row: pd.Series, columns: list, title: str):
-    """Build a Plotly pie chart from selected columns of a row, skipping zeros."""
+def make_pie_chart(row: pd.Series, columns: list, title: str, color_map: dict = None):
+    """Build a Plotly pie chart from selected columns of a row, skipping zeros.
+    If color_map is given, slices use those colors (matching by label);
+    any label not in color_map falls back to Plotly's default palette.
+    """
     labels, values = [], []
     for col in columns:
         if col not in row.index:
@@ -143,7 +159,13 @@ def make_pie_chart(row: pd.Series, columns: list, title: str):
             values.append(val)
     if not values:
         return None
-    fig = px.pie(names=labels, values=values, title=title)
+    fig = px.pie(
+        names=labels,
+        values=values,
+        title=title,
+        color=labels if color_map else None,
+        color_discrete_map=color_map,
+    )
     fig.update_traces(textinfo="label+value")
     return fig
 
@@ -221,7 +243,9 @@ if selected_name and selected_name != "-- choose your name --":
             else:
                 st.caption("No solo/co-lead data yet.")
         with col2:
-            route_type_fig = make_pie_chart(r, ROUTE_TYPE_PIE_COLUMNS, "Route Type")
+            route_type_fig = make_pie_chart(
+                r, ROUTE_TYPE_PIE_COLUMNS, "Route Type", color_map=ROUTE_TYPE_COLORS
+            )
             if route_type_fig:
                 st.plotly_chart(route_type_fig, use_container_width=True)
             else:
