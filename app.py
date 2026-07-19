@@ -175,8 +175,8 @@ def make_pie_chart(row: pd.Series, columns: list, title: str, color_map: dict = 
 # ---------------------------------------------------------------------------
 
 st.set_page_config(page_title="Hiking Club Stats", page_icon="🥾", layout="centered")
-st.title("🥾 Hiking Club Stats")
-st.caption("Find your personal hiking stats below. Data refreshes automatically every few minutes.")
+st.title("DUHWS Hill Walking Wrapped")
+st.caption("Find your personal hiking stats for 2025/2026 below")
 
 try:
     individual_df = load_individual_stats()
