@@ -300,7 +300,7 @@ def compute_favourite_leader(input_df: pd.DataFrame, name: str) -> dict:
 # ---------------------------------------------------------------------------
 
 st.set_page_config(page_title="Hiking Club Stats", page_icon="🥾", layout="centered")
-st.title("🥾 DUHWS Hill Walking Wrapped 2025/2026")
+st.title("🥾 Hill Walking Wrapped 2025/2026")
 st.caption("Find your hiking stats for 2025/2026 below!")
 
 try:
