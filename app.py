@@ -70,7 +70,7 @@ ROUTE_TYPE_PIE_COLUMNS = [
 # Grades that actually appear in the "Input" sheet's Grade column (used for
 # each person's own "route grades attended" pie chart)
 GRADE_PIE_COLUMNS = [
-    "Green", "Yellow", "Red", "D. Red", "Technical Winter", "Expedition", "Fell Run",
+    "Green", "Yellow", "Red", "Double Red", "Technical Winter", "Expedition", "Fell Run",
 ]
 
 # Colors for the route-type pie chart, matching each grade's real-world color.
@@ -79,7 +79,7 @@ ROUTE_TYPE_COLORS = {
     "Green": "#2ca02c",
     "Yellow": "#f2c318",
     "Red": "#d62728",
-    "D. Red": "#8b0000",
+    "Double Red": "#8b0000",
     "Nav Course": "#1f77b4",
     "Technical Winter": "#7fdbff",
     "Expedition": "#9467bd",
