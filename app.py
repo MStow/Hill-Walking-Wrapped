@@ -125,9 +125,9 @@ def find_leaderboard_positions(raw_grid: list, name: str) -> list:
 # APP
 # ---------------------------------------------------------------------------
 
-st.set_page_config(page_title="Hiking Club Stats", page_icon="🥾", layout="centered")
-st.title("🥾 Hiking Club Stats")
-st.caption("Find your personal hiking stats below. Data refreshes automatically every few minutes.")
+st.set_page_config(page_title="DUHWS Wrapped", page_icon="🥾", layout="centered")
+st.title("🥾 Hill Walking Wrapped")
+st.caption("Find your personal hiking stats for 2025/2026 below")
 
 try:
     individual_df = load_individual_stats()
