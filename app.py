@@ -18,7 +18,7 @@ from google.oauth2.service_account import Credentials
 # ---------------------------------------------------------------------------
 # CONFIG
 # ---------------------------------------------------------------------------
-SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1ULtkN0Qw14pdg_LvVU9GB4P2hGu8Sxbdl1jAwDH60ro/edit?gid=267106035#gid=267106035"
+SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1NE8BIxJAra8Xa1pe0fP2vRseAHHk5BUP8ZZtT8m_HRg/edit?usp=sharing"
 
 INDIVIDUAL_WS_NAME = "Individual Stats"
 LEADERBOARD_WS_NAME = "Award Leaderboards"
