@@ -41,7 +41,6 @@ INPUT_DESTINATION_COLUMN = "Destination"
 INPUT_DATE_COLUMN = "Date"
 INPUT_ROUTE_COLUMN = "Route"
 INPUT_LEAD_TYPE_COLUMN = "Lead Type"
-LEADER_LEAD_TYPES = ["Solo-lead", "Co-lead"]
 
 # Row/column layout of "Award Leaderboards" -- five Name/Value column pairs,
 # side by side, with metadata in rows 1-3, headers in row 4, data from row 5.
@@ -150,58 +149,6 @@ def get_grade_counts(input_df: pd.DataFrame, name: str) -> pd.Series:
         input_df[INPUT_NAME_COLUMN].astype(str).str.strip().str.lower() == name.strip().lower()
     ]
     return person_rows[INPUT_GRADE_COLUMN].value_counts()
-
-
-def _walk_key(row) -> tuple:
-    """Identify a unique walk from an Input row."""
-    return (row[INPUT_DESTINATION_COLUMN], row[INPUT_DATE_COLUMN], row[INPUT_ROUTE_COLUMN])
-
-
-def build_walk_leaders_map(input_df: pd.DataFrame) -> dict:
-    """Map each walk to the list of names who led it (Solo-lead or Co-lead)."""
-    required = [INPUT_DESTINATION_COLUMN, INPUT_DATE_COLUMN, INPUT_ROUTE_COLUMN,
-                INPUT_NAME_COLUMN, INPUT_LEAD_TYPE_COLUMN]
-    if any(col not in input_df.columns for col in required):
-        return {}
-    leader_rows = input_df[input_df[INPUT_LEAD_TYPE_COLUMN].isin(LEADER_LEAD_TYPES)]
-    walk_leaders = {}
-    for _, row in leader_rows.iterrows():
-        walk_leaders.setdefault(_walk_key(row), []).append(str(row[INPUT_NAME_COLUMN]))
-    return walk_leaders
-
-
-def get_favourite_leader(input_df: pd.DataFrame, name: str, is_leader: bool):
-    """
-    For a regular member: the leader(s) they've walked with most often.
-    For a leader: the co-leader(s) they've most often led walks alongside
-    (excluding themselves).
-    Returns (list_of_favourite_names, count) -- list has 2+ names if tied,
-    and is empty with count 0 if there's no data.
-    """
-    walk_leaders = build_walk_leaders_map(input_df)
-    name_lower = name.strip().lower()
-
-    if is_leader:
-        base_rows = input_df[
-            (input_df[INPUT_NAME_COLUMN].astype(str).str.strip().str.lower() == name_lower)
-            & (input_df[INPUT_LEAD_TYPE_COLUMN].isin(LEADER_LEAD_TYPES))
-        ]
-    else:
-        base_rows = input_df[
-            input_df[INPUT_NAME_COLUMN].astype(str).str.strip().str.lower() == name_lower
-        ]
-
-    counts = {}
-    for _, row in base_rows.iterrows():
-        for leader_name in walk_leaders.get(_walk_key(row), []):
-            if leader_name.strip().lower() != name_lower:
-                counts[leader_name] = counts.get(leader_name, 0) + 1
-
-    if not counts:
-        return [], 0
-    max_count = max(counts.values())
-    favourites = sorted(n for n, c in counts.items() if c == max_count)
-    return favourites, max_count
 
 
 def find_row(df: pd.DataFrame, name_column: str, name: str) -> pd.DataFrame:
@@ -416,26 +363,6 @@ if selected_name and selected_name != "-- choose your name --":
         else:
             st.info("Not enough hike data yet to work this out.")
 
-    # --- Favourite Leader / Favourite Co-lead ---
-    leader_row = find_row(leader_df, LEADER_NAME_COLUMN, selected_name)
-    is_leader = not leader_row.empty
-
-    st.subheader("🤝 Favourite Co-lead" if is_leader else "🤝 Favourite Leader")
-    favourites, top_count = get_favourite_leader(input_df, selected_name, is_leader)
-    if not favourites:
-        no_data_msg = (
-            "No co-leading data found yet." if is_leader
-            else "No leader data found yet — get out on a few hikes!"
-        )
-        st.info(no_data_msg)
-    elif len(favourites) == 1:
-        verb = "co-led" if is_leader else "walked"
-        st.write(f"**{favourites[0]}** — {verb} together {top_count} time{'s' if top_count != 1 else ''}.")
-    else:
-        verb = "co-led" if is_leader else "walked"
-        names_joined = ", ".join(favourites[:-1]) + f" and {favourites[-1]}"
-        st.write(f"It's a tie! **{names_joined}** — {verb} together {top_count} times each.")
-
     # --- Leaderboard positions ---
     st.subheader("🏆 Leaderboard Rankings")
     positions = find_leaderboard_positions(leaderboard_raw, selected_name)
@@ -449,6 +376,8 @@ if selected_name and selected_name != "-- choose your name --":
         st.info("Not currently placed on any leaderboard — keep hiking!")
 
     # --- Leader Stats (only if they're a leader) ---
+    leader_row = find_row(leader_df, LEADER_NAME_COLUMN, selected_name)
+    is_leader = not leader_row.empty
     if is_leader:
         st.subheader("🧭 Leader Stats")
         r = leader_row.iloc[0]
