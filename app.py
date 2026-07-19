@@ -13,12 +13,13 @@ No login required -- members just pick their name from a dropdown.
 import streamlit as st
 import pandas as pd
 import gspread
+import plotly.express as px
 from google.oauth2.service_account import Credentials
 
 # ---------------------------------------------------------------------------
 # CONFIG
 # ---------------------------------------------------------------------------
-SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1NE8BIxJAra8Xa1pe0fP2vRseAHHk5BUP8ZZtT8m_HRg/edit?usp=sharing"
+SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/XXXXXXXXXXXXXXXXXXXX/edit"
 
 INDIVIDUAL_WS_NAME = "Individual Stats"
 LEADERBOARD_WS_NAME = "Award Leaderboards"
@@ -42,6 +43,12 @@ LEADERBOARD_CATEGORIES = [
 LEADER_HEADER_ROW = 1  # 0-indexed row with actual column names (row 2 in-sheet)
 LEADER_DATA_START_ROW = 2  # 0-indexed row where data begins (row 3 in-sheet)
 LEADER_NAME_COLUMN = "Leader Name"
+
+# Columns from "Leader Stats" to show as pie charts
+LEAD_TYPE_PIE_COLUMNS = ["Solo-lead", "Co-lead"]
+ROUTE_TYPE_PIE_COLUMNS = [
+    "Nav Course", "Green", "Yellow", "Red", "Technical Winter", "Expedition", "Fell Run",
+]
 
 CACHE_TTL_SECONDS = 300  # re-pull from Google Sheets every 5 minutes
 
@@ -121,13 +128,33 @@ def find_leaderboard_positions(raw_grid: list, name: str) -> list:
     return results
 
 
+def make_pie_chart(row: pd.Series, columns: list, title: str):
+    """Build a Plotly pie chart from selected columns of a row, skipping zeros."""
+    labels, values = [], []
+    for col in columns:
+        if col not in row.index:
+            continue
+        try:
+            val = float(row[col])
+        except (ValueError, TypeError):
+            val = 0
+        if val > 0:
+            labels.append(col)
+            values.append(val)
+    if not values:
+        return None
+    fig = px.pie(names=labels, values=values, title=title)
+    fig.update_traces(textinfo="label+value")
+    return fig
+
+
 # ---------------------------------------------------------------------------
 # APP
 # ---------------------------------------------------------------------------
 
-st.set_page_config(page_title="DUHWS Wrapped", page_icon="🥾", layout="centered")
-st.title("🥾 Hill Walking Wrapped")
-st.caption("Find your personal hiking stats for 2025/2026 below")
+st.set_page_config(page_title="Hiking Club Stats", page_icon="🥾", layout="centered")
+st.title("🥾 Hiking Club Stats")
+st.caption("Find your personal hiking stats below. Data refreshes automatically every few minutes.")
 
 try:
     individual_df = load_individual_stats()
@@ -185,6 +212,20 @@ if selected_name and selected_name != "-- choose your name --":
         # Drop stats that are zero across the board for readability
         leader_display = leader_display[leader_display["Value"].astype(str) != "0"]
         st.table(leader_display.set_index("Stat"))
+
+        col1, col2 = st.columns(2)
+        with col1:
+            lead_type_fig = make_pie_chart(r, LEAD_TYPE_PIE_COLUMNS, "Lead Type")
+            if lead_type_fig:
+                st.plotly_chart(lead_type_fig, use_container_width=True)
+            else:
+                st.caption("No solo/co-lead data yet.")
+        with col2:
+            route_type_fig = make_pie_chart(r, ROUTE_TYPE_PIE_COLUMNS, "Route Type")
+            if route_type_fig:
+                st.plotly_chart(route_type_fig, use_container_width=True)
+            else:
+                st.caption("No route-type data yet.")
 
 st.divider()
 st.caption("Built for the club — data pulled live from Google Sheets.")
