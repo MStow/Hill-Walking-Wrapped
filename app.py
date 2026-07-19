@@ -300,8 +300,8 @@ def compute_favourite_leader(input_df: pd.DataFrame, name: str) -> dict:
 # ---------------------------------------------------------------------------
 
 st.set_page_config(page_title="Hiking Club Stats", page_icon="🥾", layout="centered")
-st.title("🥾 Hiking Club Stats")
-st.caption("Find your personal hiking stats below. Data refreshes automatically every few minutes.")
+st.title("🥾 DUHWS Hill Walking Wrapped 2025/2026")
+st.caption("Find your hiking stats for 2025/2026 below!")
 
 try:
     individual_df = load_individual_stats()
