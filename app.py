@@ -2,10 +2,12 @@
 Hiking Club Stats App
 ----------------------
 A Streamlit app that lets club members look up their own hiking stats.
-Data is pulled live from a single Google Sheet with three tabs:
+Data is pulled live from a single Google Sheet with four tabs:
   1. "Individual Stats"    -- one row per person: attendance, distance, height gain
   2. "Award Leaderboards"  -- five side-by-side ranked lists (one per stat)
   3. "Leader Stats"        -- lead-type & route-grade breakdown, leaders only
+  4. "Input"               -- one row per person per hike, used to build each
+                              person's own "route grades attended" pie chart
 
 No login required -- members just pick their name from a dropdown.
 """
@@ -19,11 +21,18 @@ from google.oauth2.service_account import Credentials
 # ---------------------------------------------------------------------------
 # CONFIG
 # ---------------------------------------------------------------------------
-SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1ULtkN0Qw14pdg_LvVU9GB4P2hGu8Sxbdl1jAwDH60ro/edit?usp=sharing"
+SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/XXXXXXXXXXXXXXXXXXXX/edit"
 
 INDIVIDUAL_WS_NAME = "Individual Stats"
 LEADERBOARD_WS_NAME = "Award Leaderboards"
 LEADER_WS_NAME = "Leader Stats"
+INPUT_WS_NAME = "Input"
+
+# "Input" has one row per person per hike attended, with a "Name" column
+# and a "Grade" column (Green/Yellow/Red/D. Red/Technical Winter/Expedition/
+# Fell Run) -- used to build each person's own route-grade pie chart.
+INPUT_NAME_COLUMN = "Name"
+INPUT_GRADE_COLUMN = "Grade"
 
 # Row/column layout of "Award Leaderboards" -- five Name/Value column pairs,
 # side by side, with metadata in rows 1-3, headers in row 4, data from row 5.
@@ -48,6 +57,12 @@ LEADER_NAME_COLUMN = "Leader Name"
 LEAD_TYPE_PIE_COLUMNS = ["Solo-lead", "Co-lead"]
 ROUTE_TYPE_PIE_COLUMNS = [
     "Nav Course", "Green", "Yellow", "Red", "Technical Winter", "Expedition", "Fell Run",
+]
+
+# Grades that actually appear in the "Input" sheet's Grade column (used for
+# each person's own "route grades attended" pie chart)
+GRADE_PIE_COLUMNS = [
+    "Green", "Yellow", "Red", "D. Red", "Technical Winter", "Expedition", "Fell Run",
 ]
 
 # Colors for the route-type pie chart, matching each grade's real-world color.
@@ -110,6 +125,24 @@ def load_leader_stats() -> pd.DataFrame:
     return df
 
 
+@st.cache_data(ttl=CACHE_TTL_SECONDS)
+def load_input_data() -> pd.DataFrame:
+    client = get_gspread_client()
+    ws = client.open_by_url(SPREADSHEET_URL).worksheet(INPUT_WS_NAME)
+    records = ws.get_all_records()  # single clean header row
+    return pd.DataFrame(records)
+
+
+def get_grade_counts(input_df: pd.DataFrame, name: str) -> pd.Series:
+    """Count how many hikes of each grade this person has attended."""
+    if INPUT_NAME_COLUMN not in input_df.columns or INPUT_GRADE_COLUMN not in input_df.columns:
+        return pd.Series(dtype=int)
+    person_rows = input_df[
+        input_df[INPUT_NAME_COLUMN].astype(str).str.strip().str.lower() == name.strip().lower()
+    ]
+    return person_rows[INPUT_GRADE_COLUMN].value_counts()
+
+
 def find_row(df: pd.DataFrame, name_column: str, name: str) -> pd.DataFrame:
     if name_column not in df.columns:
         return pd.DataFrame()
@@ -170,18 +203,37 @@ def make_pie_chart(row: pd.Series, columns: list, title: str, color_map: dict = 
     return fig
 
 
+def make_pie_chart_from_counts(counts: pd.Series, title: str, color_map: dict = None):
+    """Build a Plotly pie chart from a value_counts()-style Series."""
+    counts = counts[counts > 0]
+    if counts.empty:
+        return None
+    labels = list(counts.index)
+    values = list(counts.values)
+    fig = px.pie(
+        names=labels,
+        values=values,
+        title=title,
+        color=labels if color_map else None,
+        color_discrete_map=color_map,
+    )
+    fig.update_traces(textinfo="label+value")
+    return fig
+
+
 # ---------------------------------------------------------------------------
 # APP
 # ---------------------------------------------------------------------------
 
 st.set_page_config(page_title="Hiking Club Stats", page_icon="🥾", layout="centered")
-st.title("DUHWS Hill Walking Wrapped")
-st.caption("Find your personal hiking stats for 2025/2026 below")
+st.title("🥾 Hiking Club Stats")
+st.caption("Find your personal hiking stats below. Data refreshes automatically every few minutes.")
 
 try:
     individual_df = load_individual_stats()
     leaderboard_raw = load_leaderboard_raw()
     leader_df = load_leader_stats()
+    input_df = load_input_data()
 except Exception as e:
     st.error(
         "Couldn't load data from Google Sheets. Double-check the spreadsheet URL, "
@@ -211,6 +263,15 @@ if selected_name and selected_name != "-- choose your name --":
         stats_display = pd.DataFrame({"Stat": r.index, "Value": r.values})
         stats_display = stats_display[stats_display["Stat"] != "Name"]
         st.table(stats_display.set_index("Stat"))
+
+        grade_counts = get_grade_counts(input_df, selected_name)
+        grade_fig = make_pie_chart_from_counts(
+            grade_counts, "Your Route Grades", color_map=ROUTE_TYPE_COLORS
+        )
+        if grade_fig:
+            st.plotly_chart(grade_fig, use_container_width=True)
+        else:
+            st.caption("No hikes logged yet.")
 
     # --- Leaderboard positions ---
     st.subheader("🏆 Leaderboard Rankings")
